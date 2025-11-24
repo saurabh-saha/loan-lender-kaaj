@@ -82,3 +82,9 @@ def update_policy(policy_id: int, policy: LenderPolicyCreate, db: Session = Depe
     db.commit()
     db.refresh(obj)
     return obj
+
+@router.delete("/all")
+def delete_all_policies(db: Session = Depends(get_db)):
+    db.query(LenderPolicy).delete()
+    db.commit()
+    return {"status": "ok", "message": "All policies deleted"}

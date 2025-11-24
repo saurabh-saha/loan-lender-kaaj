@@ -1,40 +1,63 @@
 export function generateRandomPolicy() {
-    const fields = [
+    // Field classification
+    const numericFields = [
       "borrower.years_in_business",
       "borrower.annual_revenue",
       "guarantors[0].fico_score",
       "loan_request.amount",
-      "loan_request.term_months",
+      "loan_request.term_months"
+    ];
+  
+    const stringFields = [
       "loan_request.equipment_type",
       "borrower.state",
       "borrower.industry"
     ];
   
+    // Allowed lists
     const equipmentTypes = ["Excavator", "Truck", "Forklift", "Crane", "Bulldozer"];
     const states = ["CA", "TX", "FL", "NY", "WA", "GA"];
-    const industries = ["Construction", "Manufacturing", "Logistics", "Retail", "Healthcare"];
+    const industries = [
+      "Construction",
+      "Manufacturing",
+      "Logistics",
+      "Retail",
+      "Healthcare"
+    ];
   
+    /** Generate a safe random rule */
     function randomRule(idPrefix: string, severity: "HARD" | "SOFT") {
-      const field = fields[Math.floor(Math.random() * fields.length)];
+      const allFields = [...numericFields, ...stringFields];
+      const field = allFields[Math.floor(Math.random() * allFields.length)];
   
-      const type = ["MIN_VALUE", "MAX_VALUE", "IN_LIST", "NOT_IN_LIST"][
-        Math.floor(Math.random() * 4)
-      ];
-  
+      let type: string;
       let params: any = {};
   
-      if (type === "MIN_VALUE") {
-        params = { min: Math.floor(Math.random() * 200000 + 1000) };
-      } else if (type === "MAX_VALUE") {
-        params = { max: Math.floor(Math.random() * 300000 + 20000) };
-      } else if (type === "IN_LIST" || type === "NOT_IN_LIST") {
-        params = {
-          list: field.includes("equipment")
-            ? equipmentTypes.slice(0, Math.floor(Math.random() * equipmentTypes.length))
+      // If numeric → MIN or MAX
+      if (numericFields.includes(field)) {
+        type = Math.random() > 0.5 ? "MIN_VALUE" : "MAX_VALUE";
+  
+        if (type === "MIN_VALUE") {
+          params = { min: Math.floor(Math.random() * 50000 + 1000) }; // realistic range
+        } else {
+          params = { max: Math.floor(Math.random() * 50000 + 5000) };
+        }
+      }
+  
+      // If string → IN_LIST or NOT_IN_LIST
+      else {
+        type = Math.random() > 0.5 ? "IN_LIST" : "NOT_IN_LIST";
+  
+        const source =
+          field.includes("equipment")
+            ? equipmentTypes
             : field.includes("state")
-            ? states.slice(0, Math.floor(Math.random() * states.length))
-            : industries.slice(0, Math.floor(Math.random() * industries.length))
-        };
+            ? states
+            : industries;
+  
+        const size = Math.floor(Math.random() * source.length) || 1;
+  
+        params = { list: source.slice(0, size) };
       }
   
       return {
@@ -47,18 +70,18 @@ export function generateRandomPolicy() {
       };
     }
   
-    // Generate random sets of rules
+    // Generate rules
     const hardRules = Array.from({ length: 3 }, () => randomRule("HARD", "HARD"));
     const softRules = Array.from({ length: 3 }, () => randomRule("SOFT", "SOFT"));
   
-    // Generate scoring config
+    // Scoring
     const scoring = {
       base_score: 100,
       min_accept_score: 60,
       deductions: [
         {
           ruleId: softRules[Math.floor(Math.random() * softRules.length)].id,
-          points: Math.floor(Math.random() * 20 + 5)
+          points: Math.floor(Math.random() * 15 + 5)
         }
       ]
     };

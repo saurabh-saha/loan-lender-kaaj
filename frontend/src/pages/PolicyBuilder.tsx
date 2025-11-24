@@ -5,6 +5,25 @@ import { generateRandomPolicy } from "../utils/randomPolicy";
 
 const API = "http://localhost:8000";
 
+const FIELD_OPTIONS = [
+  "borrower.years_in_business",
+  "borrower.annual_revenue",
+  "guarantors[0].fico_score",
+  "loan_request.amount",
+  "loan_request.term_months",
+  "loan_request.equipment_type",
+  "borrower.state",
+  "borrower.industry"
+];
+
+const RULE_TYPES = ["MIN_VALUE", "MAX_VALUE", "IN_LIST", "NOT_IN_LIST"];
+
+const LIST_OPTIONS: Record<string, string[]> = {
+  "loan_request.equipment_type": ["Excavator", "Truck", "Forklift", "Crane", "Bulldozer"],
+  "borrower.state": ["CA", "TX", "FL", "NY", "WA", "GA"],
+  "borrower.industry": ["Construction", "Manufacturing", "Logistics", "Retail", "Healthcare"]
+};
+
 interface Lender {
   id: number;
   name: string;
@@ -39,7 +58,7 @@ export default function PolicyBuilder() {
     id: "",
     type: "MIN_VALUE",
     field: "",
-    params: { min: "" },
+    params: {},
     severity: "HARD",
     message: ""
   });
@@ -59,54 +78,58 @@ export default function PolicyBuilder() {
     axios.get(`${API}/policies/programs`).then((res) => setPrograms(res.data));
   }, []);
 
-  // Add rule to appropriate bucket
+  function autoGenerateRuleId() {
+    return `${newRule.severity}_${Math.floor(Math.random() * 100000)}`;
+  }
+
+  function updateParams(ruleType: string, field: string) {
+    if (ruleType === "MIN_VALUE") return { min: 0 };
+    if (ruleType === "MAX_VALUE") return { max: 0 };
+
+    // IN_LIST / NOT_IN_LIST
+    const list = LIST_OPTIONS[field] || [];
+    return { list };
+  }
+
   function addRule() {
-    if (!newRule.id || !newRule.field || !newRule.message) {
-      setError("Fill rule ID, field and message");
+    if (!newRule.type || !newRule.field) {
+      setError("Fill rule type and field");
       return;
     }
 
-    if (newRule.severity === "HARD") {
-      setHardRules((prev) => [...prev, newRule]);
-    } else {
-      setSoftRules((prev) => [...prev, newRule]);
-    }
+    const ruleToSave = {
+      ...newRule,
+      id: newRule.id || autoGenerateRuleId(),
+      message: newRule.message || `Failed ${newRule.type} check on ${newRule.field}`
+    };
+
+    if (newRule.severity === "HARD") setHardRules((prev) => [...prev, ruleToSave]);
+    else setSoftRules((prev) => [...prev, ruleToSave]);
 
     setNewRule({
       id: "",
       type: "MIN_VALUE",
       field: "",
-      params: { min: "" },
+      params: {},
       severity: "HARD",
       message: ""
     });
+
     setError("");
   }
 
-  // Construct final payload
   const policyPayload = {
     lender_program_id: Number(selectedProgram),
     version: 1,
     is_active: true,
     policy_json: {
-      hard_rules: {
-        logic: "ALL",
-        rules: hardRules
-      },
-      soft_rules: {
-        logic: "ALL",
-        rules: softRules
-      },
+      hard_rules: { logic: "ALL", rules: hardRules },
+      soft_rules: { logic: "ALL", rules: softRules },
       scoring_config: {
         base_score: Number(scoreConfig.base_score),
         min_accept_score: Number(scoreConfig.min_accept_score),
         deductions: scoreConfig.deduction_rule_id
-          ? [
-              {
-                ruleId: scoreConfig.deduction_rule_id,
-                points: Number(scoreConfig.deduction_points),
-              }
-            ]
+          ? [{ ruleId: scoreConfig.deduction_rule_id, points: Number(scoreConfig.deduction_points) }]
           : []
       }
     }
@@ -114,17 +137,11 @@ export default function PolicyBuilder() {
 
   async function submitPolicy(e: FormEvent) {
     e.preventDefault();
-    if (!selectedProgram) {
-      setError("Please select a program");
-      return;
-    }
-
     try {
       await axios.post(`${API}/policies/`, policyPayload);
       alert("Policy created!");
-    } catch (err: any) {
-      console.error(err);
-      setError("Failed to create policy.");
+    } catch {
+      setError("Failed to create policy");
     }
   }
 
@@ -134,9 +151,9 @@ export default function PolicyBuilder() {
         Policy Builder
       </h1>
 
-      {/* Select Lender */}
-      <div style={{ marginBottom: "1rem" }}>
-        <label style={{ display: "block", fontWeight: "bold" }}>Select Lender</label>
+      {/* LENDER SELECTOR */}
+      <div>
+        <label>Select Lender</label>
         <select
           value={selectedLender}
           onChange={(e) => {
@@ -154,10 +171,10 @@ export default function PolicyBuilder() {
         </select>
       </div>
 
-      {/* Select Program */}
+      {/* PROGRAM SELECT */}
       {selectedLender && (
-        <div style={{ marginBottom: "1rem" }}>
-          <label style={{ display: "block", fontWeight: "bold" }}>Select Program</label>
+        <div style={{ marginTop: "1rem" }}>
+          <label>Select Program</label>
           <select
             value={selectedProgram}
             onChange={(e) => setSelectedProgram(e.target.value)}
@@ -174,96 +191,133 @@ export default function PolicyBuilder() {
           </select>
         </div>
       )}
-      
+
+      {/* RANDOM POLICY GENERATOR */}
       <button
-  type="button"
-  onClick={() => {
-    const randomPolicy = generateRandomPolicy();
-    setHardRules(randomPolicy.hard_rules.rules);
-    setSoftRules(randomPolicy.soft_rules.rules);
-    setScoreConfig({
-      base_score: randomPolicy.scoring_config.base_score,
-      min_accept_score: randomPolicy.scoring_config.min_accept_score,
-      deduction_rule_id: randomPolicy.scoring_config.deductions[0]?.ruleId || "",
-      deduction_points: randomPolicy.scoring_config.deductions[0]?.points || 10
-    });
-  }}
-  style={{
-    background: "#10b981",
-    color: "white",
-    padding: "0.6rem 1rem",
-    borderRadius: "6px",
-    cursor: "pointer",
-    marginBottom: "1rem"
-  }}
->
-  Generate Random Policy
-  </button>
-  
-      {/* RULE BUILDER */}
-      <div
+        type="button"
+        onClick={() => {
+          const rp = generateRandomPolicy();
+          setHardRules(rp.hard_rules.rules);
+          setSoftRules(rp.soft_rules.rules);
+          setScoreConfig({
+            base_score: rp.scoring_config.base_score,
+            min_accept_score: rp.scoring_config.min_accept_score,
+            deduction_rule_id: rp.scoring_config.deductions[0]?.ruleId || "",
+            deduction_points: rp.scoring_config.deductions[0]?.points || 10
+          });
+        }}
         style={{
-          background: "#f9fafb",
-          padding: "1.25rem",
-          borderRadius: "8px",
-          marginTop: "1.5rem"
+          marginTop: "1rem",
+          background: "#10b981",
+          color: "white",
+          padding: "0.6rem 1rem",
+          borderRadius: "6px"
         }}
       >
-        <h2 style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>Add Rule</h2>
+        Generate Random Policy
+      </button>
 
-        {error && (
-          <div style={{ background: "#fee2e2", padding: "0.75rem", borderRadius: "6px" }}>
-            {error}
-          </div>
-        )}
+      {/* RULE BUILDER */}
+      <div style={{ marginTop: "2rem", background: "#f9fafb", padding: "1.25rem", borderRadius: "8px" }}>
+        <h2>Add Rule</h2>
 
-        {/* Rule fields */}
-        <div style={{ marginBottom: "1rem" }}>
-          <label>Rule ID</label>
-          <input
-            value={newRule.id}
-            onChange={(e) => setNewRule({ ...newRule, id: e.target.value })}
-            style={{ width: "100%", padding: "0.5rem" }}
-          />
-        </div>
-
-        <div style={{ marginBottom: "1rem" }}>
-          <label>Rule Type</label>
+        {/* FIELD SELECT */}
+        <div>
+          <label>Field</label>
           <select
-            value={newRule.type}
-            onChange={(e) => setNewRule({ ...newRule, type: e.target.value })}
+            value={newRule.field}
+            onChange={(e) => {
+              const field = e.target.value;
+              const params = updateParams(newRule.type, field);
+              setNewRule({ ...newRule, field, params });
+            }}
             style={{ width: "100%", padding: "0.5rem" }}
           >
-            <option value="MIN_VALUE">MIN_VALUE</option>
-            <option value="MAX_VALUE">MAX_VALUE</option>
-            <option value="IN_LIST">IN_LIST</option>
-            <option value="NOT_IN_LIST">NOT_IN_LIST</option>
+            <option value="">Choose field</option>
+            {FIELD_OPTIONS.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
           </select>
         </div>
 
-        <div style={{ marginBottom: "1rem" }}>
-          <label>Field</label>
-          <input
-            value={newRule.field}
-            onChange={(e) => setNewRule({ ...newRule, field: e.target.value })}
+        {/* RULE TYPE */}
+        <div style={{ marginTop: "1rem" }}>
+          <label>Rule Type</label>
+          <select
+            value={newRule.type}
+            onChange={(e) => {
+              const type = e.target.value;
+              const params = updateParams(type, newRule.field);
+              setNewRule({ ...newRule, type, params });
+            }}
             style={{ width: "100%", padding: "0.5rem" }}
-          />
+          >
+            {RULE_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Params */}
-        <div style={{ marginBottom: "1rem" }}>
-          <label>Params (min/max/list)</label>
-          <input
-            value={JSON.stringify(newRule.params)}
-            onChange={(e) =>
-              setNewRule({ ...newRule, params: JSON.parse(e.target.value) })
-            }
-            style={{ width: "100%", padding: "0.5rem" }}
-          />
-          <small>Example: {"{ \"min\": 700 }"} or {"{ \"list\": [\"CA\",\"TX\"] }"}</small>
-        </div>
+        {/* PARAM UI */}
+        {newRule.type === "MIN_VALUE" && (
+          <div style={{ marginTop: "1rem" }}>
+            <label>Minimum Value</label>
+            <input
+              type="number"
+              value={newRule.params.min}
+              onChange={(e) =>
+                setNewRule({ ...newRule, params: { min: Number(e.target.value) } })
+              }
+              style={{ width: "100%", padding: "0.5rem" }}
+            />
+          </div>
+        )}
 
-        <div style={{ marginBottom: "1rem" }}>
+        {newRule.type === "MAX_VALUE" && (
+          <div style={{ marginTop: "1rem" }}>
+            <label>Maximum Value</label>
+            <input
+              type="number"
+              value={newRule.params.max}
+              onChange={(e) =>
+                setNewRule({ ...newRule, params: { max: Number(e.target.value) } })
+              }
+              style={{ width: "100%", padding: "0.5rem" }}
+            />
+          </div>
+        )}
+
+        {(newRule.type === "IN_LIST" || newRule.type === "NOT_IN_LIST") && (
+          <div style={{ marginTop: "1rem" }}>
+            <label>Allowed List</label>
+            <select
+              multiple
+              value={newRule.params.list || []}
+              onChange={(e) =>
+                setNewRule({
+                  ...newRule,
+                  params: {
+                    list: Array.from(e.target.selectedOptions).map((o) => o.value)
+                  }
+                })
+              }
+              style={{ width: "100%", padding: "0.5rem", height: "6rem" }}
+            >
+              {(LIST_OPTIONS[newRule.field] || []).map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Severity */}
+        <div style={{ marginTop: "1rem" }}>
           <label>Severity</label>
           <select
             value={newRule.severity}
@@ -275,90 +329,29 @@ export default function PolicyBuilder() {
           </select>
         </div>
 
-        <div style={{ marginBottom: "1rem" }}>
-          <label>Message</label>
-          <input
-            value={newRule.message}
-            onChange={(e) => setNewRule({ ...newRule, message: e.target.value })}
-            style={{ width: "100%", padding: "0.5rem" }}
-          />
-        </div>
-
+        {/* Add Rule */}
         <button
           onClick={addRule}
           style={{
+            marginTop: "1rem",
             background: "#2563eb",
             color: "white",
             padding: "0.6rem 1rem",
-            borderRadius: "6px",
-            cursor: "pointer"
+            borderRadius: "6px"
           }}
         >
           Add Rule
         </button>
       </div>
 
-      {/* RULE LISTS */}
+      {/* RULE PREVIEW */}
       <h3 style={{ marginTop: "2rem" }}>Hard Rules</h3>
       <pre>{JSON.stringify(hardRules, null, 2)}</pre>
 
       <h3>Soft Rules</h3>
       <pre>{JSON.stringify(softRules, null, 2)}</pre>
 
-      {/* SCORING CONFIG */}
-      <div style={{ marginTop: "2rem" }}>
-        <h2>Scoring Config</h2>
-
-        <label>Base Score</label>
-        <input
-          value={scoreConfig.base_score}
-          onChange={(e) =>
-            setScoreConfig({ ...scoreConfig, base_score: Number(e.target.value) })
-          }
-          style={{ width: "100%", padding: "0.5rem" }}
-        />
-
-        <label>Minimum Accept Score</label>
-        <input
-          value={scoreConfig.min_accept_score}
-          onChange={(e) =>
-            setScoreConfig({
-              ...scoreConfig,
-              min_accept_score: Number(e.target.value),
-            })
-          }
-          style={{ width: "100%", padding: "0.5rem", marginTop: "0.5rem" }}
-        />
-
-        <label>Deduction Rule ID</label>
-        <input
-          value={scoreConfig.deduction_rule_id}
-          onChange={(e) =>
-            setScoreConfig({ ...scoreConfig, deduction_rule_id: e.target.value })
-          }
-          style={{ width: "100%", padding: "0.5rem" }}
-        />
-
-        <label>Points Deducted</label>
-        <input
-          value={scoreConfig.deduction_points}
-          onChange={(e) =>
-            setScoreConfig({
-              ...scoreConfig,
-              deduction_points: Number(e.target.value),
-            })
-          }
-          style={{ width: "100%", padding: "0.5rem" }}
-        />
-      </div>
-
-      {/* Final JSON Preview */}
-      <h2 style={{ marginTop: "2rem" }}>Final Policy JSON</h2>
-      <pre style={{ background: "#f3f4f6", padding: "1rem", borderRadius: "8px" }}>
-        {JSON.stringify(policyPayload, null, 2)}
-      </pre>
-
-      {/* Submit */}
+      {/* SUBMIT */}
       <button
         onClick={submitPolicy}
         style={{

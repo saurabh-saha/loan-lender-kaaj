@@ -33,46 +33,17 @@ The system:
 
 The project uses PostgreSQL via Docker Compose.
 
-### Start DB
+### Start DB, Backend, Frontend
 
 ```
 docker compose up -d
 ```
 
----
-
-# **Running the Backend**
-
-### Install dependencies
-
-```
-cd backend
-conda create -c kaaj python=3.11
-conda activate kaaj
-pip install -r requirements.txt
-```
-
-### Run FastAPI
-
-```
-uvicorn app.main:app --reload
-```
 
 Backend runs at:
 
 ```
 http://localhost:8000
-```
-
----
-
-# ▶**Running the Frontend**
-
-```
-cd frontend
-nvm use 22
-npm install
-npm run dev
 ```
 
 Frontend runs at:
