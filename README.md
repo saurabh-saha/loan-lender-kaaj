@@ -11,7 +11,7 @@ The system:
 * Has a full React UI to view and manage applications, lenders, programs, and policies
 * Includes a match results viewer with rule-level explanations
 
-# 🛠️ **Tech Stack**
+# **Tech Stack**
 
 ### **Backend**
 
@@ -56,16 +56,16 @@ http://localhost:5173
 
 # ** Features**
 
-### ✔ Loan Application Submission
+### Loan Application Submission
 
 Captures borrower info, guarantors, and loan request details.
 
-### ✔ Lender + Program Management
+### Lender + Program Management
 
 Add / View lenders
 Add / View lending programs
 
-### ✔ Policy Builder
+### Policy Builder
 
 JSON-based rule engine with:
 
@@ -76,7 +76,7 @@ JSON-based rule engine with:
 
 Includes **random policy generator** for quick testing.
 
-### ✔ Underwriting Engine
+### Underwriting Engine
 
 * Builds full application profile
 * Evaluates all active lenders
@@ -85,7 +85,7 @@ Includes **random policy generator** for quick testing.
 * Stores match results
 * Returns ranked lender list
 
-### ✔ Match Results Page
+### Match Results Page
 
 Shows:
 
