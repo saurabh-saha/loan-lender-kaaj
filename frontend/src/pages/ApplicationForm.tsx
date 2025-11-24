@@ -2,6 +2,22 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import axios from "axios";
 
+// -----------------------------
+// Helpers
+// -----------------------------
+function formatUSD(value: string | number) {
+  if (!value) return "";
+  const num = Number(String(value).replace(/[^0-9]/g, ""));
+  if (isNaN(num)) return "";
+  return num.toLocaleString("en-US");
+}
+
+function parseUSD(value: string) {
+  return Number(value.replace(/[^0-9]/g, "")) || 0;
+}
+
+// -----------------------------
+
 interface BorrowerForm {
   business_name: string;
   industry: string;
@@ -13,8 +29,6 @@ interface BorrowerForm {
 interface GuarantorForm {
   name: string;
   fico_score: string;
-  bankruptcy_flag: boolean;
-  delinquency_flag: boolean;
 }
 
 interface LoanForm {
@@ -28,69 +42,72 @@ interface LoanForm {
 }
 
 export default function ApplicationForm() {
+  const industries = ["Construction", "Manufacturing", "Retail", "Transport", "Healthcare"];
+  const states = ["CA", "NY", "TX", "FL", "WA"];
+  const equipmentTypes = ["Excavator", "Forklift", "Truck", "Bulldozer", "Crane"];
+  const conditions = ["New", "Used"];
+
+  const yearsList = Array.from({ length: 17 }, (_, i) => 2010 + i);
+
+  const API = "http://localhost:8000";
+
   const [borrower, setBorrower] = useState<BorrowerForm>({
     business_name: "",
-    industry: "",
-    state: "",
+    industry: industries[0],
+    state: states[0],
     years_in_business: "",
-    annual_revenue: ""
+    annual_revenue: "",
   });
 
   const [guarantor, setGuarantor] = useState<GuarantorForm>({
     name: "",
     fico_score: "",
-    bankruptcy_flag: false,
-    delinquency_flag: false
   });
 
   const [loan, setLoan] = useState<LoanForm>({
     amount: "",
     term_months: "",
-    equipment_type: "",
+    equipment_type: equipmentTypes[0],
     equipment_cost: "",
-    equipment_year: "",
+    equipment_year: yearsList[0].toString(),
     equipment_vendor: "",
-    equipment_condition: ""
+    equipment_condition: conditions[0],
   });
 
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<any>(null);
 
-  const API = "http://localhost:8000";
-
-  // 🔹 Random generator button logic
+  // -----------------------------
+  // Random Data Button
+  // -----------------------------
   function generateRandom() {
-    const industries = ["Construction", "Manufacturing", "Retail", "Transport", "Healthcare"];
-    const states = ["CA", "NY", "TX", "FL", "WA"];
-    const equipmentTypes = ["Excavator", "Forklift", "Truck", "Bulldozer", "Crane"];
-    const conditions = ["New", "Used"];
-
     setBorrower({
       business_name: "BizCorp " + Math.floor(Math.random() * 1000),
       industry: industries[Math.floor(Math.random() * industries.length)],
       state: states[Math.floor(Math.random() * states.length)],
       years_in_business: (Math.random() * 10 + 1).toFixed(1),
-      annual_revenue: (Math.random() * 900000 + 100000).toFixed(0)
+      annual_revenue: formatUSD(Math.floor(Math.random() * 900000 + 100000)),
     });
 
     setGuarantor({
       name: "John Doe " + Math.floor(Math.random() * 100),
       fico_score: (Math.random() * 200 + 600).toFixed(0),
-      bankruptcy_flag: false,
-      delinquency_flag: false
     });
 
     setLoan({
-      amount: (Math.random() * 200000 + 5000).toFixed(0),
+      amount: formatUSD(Math.floor(Math.random() * 200000 + 5000)),
       term_months: ["24", "36", "48", "60"][Math.floor(Math.random() * 4)],
       equipment_type: equipmentTypes[Math.floor(Math.random() * equipmentTypes.length)],
-      equipment_cost: (Math.random() * 300000 + 10000).toFixed(0),
-      equipment_year: (Math.floor(Math.random() * 10) + 2015).toString(),
+      equipment_cost: formatUSD(Math.floor(Math.random() * 300000 + 10000)),
+      equipment_year: yearsList[Math.floor(Math.random() * yearsList.length)].toString(),
       equipment_vendor: "Vendor " + Math.floor(Math.random() * 50),
       equipment_condition: conditions[Math.floor(Math.random() * conditions.length)],
     });
   }
 
+  // -----------------------------
+  // Submit Form
+  // -----------------------------
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -101,7 +118,7 @@ export default function ApplicationForm() {
         borrower: {
           ...borrower,
           years_in_business: Number(borrower.years_in_business),
-          annual_revenue: Number(borrower.annual_revenue),
+          annual_revenue: parseUSD(borrower.annual_revenue),
         },
         guarantors: [
           {
@@ -111,40 +128,38 @@ export default function ApplicationForm() {
         ],
         loan_request: {
           ...loan,
-          amount: Number(loan.amount),
+          amount: parseUSD(loan.amount),
           term_months: Number(loan.term_months),
-          equipment_cost: Number(loan.equipment_cost),
-          equipment_year: loan.equipment_year
-            ? Number(loan.equipment_year)
-            : null,
+          equipment_cost: parseUSD(loan.equipment_cost),
+          equipment_year: Number(loan.equipment_year),
         },
       };
 
       const res = await axios.post(`${API}/applications/`, payload);
       setResult(res.data);
     } catch (err: any) {
-      setError(err.response?.data || err.message || "Something went wrong");
+      setError(err.response?.data || err.message);
     }
   }
 
+  // -----------------------------
+  // Component UI
+  // -----------------------------
   return (
     <div style={{ padding: "2rem", maxWidth: "700px", margin: "auto" }}>
       <h1 style={{ fontSize: "1.8rem", fontWeight: "bold", marginBottom: "1.5rem" }}>
         Loan Application Form
       </h1>
 
-      {/* 🔹 Random generator button */}
       <button
         type="button"
         onClick={generateRandom}
         style={{
           background: "#10b981",
           color: "white",
-          padding: "0.6rem 1.0rem",
+          padding: "0.6rem 1rem",
           borderRadius: "6px",
           marginBottom: "1.2rem",
-          cursor: "pointer",
-          fontSize: "1rem"
         }}
       >
         Generate Random Application
@@ -161,36 +176,100 @@ export default function ApplicationForm() {
           borderRadius: "8px",
         }}
       >
-        {/* Borrower Section */}
+        {/* ------------------- Borrower ------------------- */}
         <section>
-          <h2 style={{ fontSize: "1.3rem", marginBottom: "1rem" }}>
-            Borrower Information
-          </h2>
+          <h2 style={{ fontSize: "1.3rem" }}>Borrower</h2>
 
-          {Object.entries(borrower).map(([key, value]) => (
-            <div key={key} style={{ marginBottom: "1rem" }}>
-              <label style={{ display: "block", fontWeight: "bold" }}>
-                {key.replace(/_/g, " ")}
-              </label>
+          {/* Business Name */}
+          <div>
+            <label>Business Name</label>
+            <input
+              value={borrower.business_name}
+              onChange={(e) =>
+                setBorrower({ ...borrower, business_name: e.target.value })
+              }
+              style={{ width: "100%", padding: "0.5rem" }}
+            />
+          </div>
+
+          {/* Industry dropdown */}
+          <div>
+            <label>Industry</label>
+            <select
+              value={borrower.industry}
+              onChange={(e) =>
+                setBorrower({ ...borrower, industry: e.target.value })
+              }
+              style={{ width: "100%", padding: "0.5rem" }}
+            >
+              {industries.map((i) => (
+                <option key={i}>{i}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* State dropdown */}
+          <div>
+            <label>State</label>
+            <select
+              value={borrower.state}
+              onChange={(e) => setBorrower({ ...borrower, state: e.target.value })}
+              style={{ width: "100%", padding: "0.5rem" }}
+            >
+              {states.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Years in Business */}
+          <div>
+            <label>Years in Business</label>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="100"
+              value={borrower.years_in_business}
+              onChange={(e) =>
+                setBorrower({ ...borrower, years_in_business: e.target.value })
+              }
+              style={{ width: "100%", padding: "0.5rem" }}
+            />
+          </div>
+
+          {/* Annual Revenue (USD formatted) */}
+          <div>
+            <label>Annual Revenue (USD)</label>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <span>$&nbsp;</span>
               <input
-                value={value}
+                type="text"
+                value={borrower.annual_revenue}
                 onChange={(e) =>
-                  setBorrower({ ...borrower, [key]: e.target.value })
+                    setBorrower({
+                    ...borrower,
+                    annual_revenue: formatUSD(e.target.value),
+                    })
                 }
+                onBlur={() => {
+                    const num = parseUSD(borrower.annual_revenue);
+                    if (num > 10000000) {
+                    setBorrower({ ...borrower, annual_revenue: formatUSD(10000000) });
+                    }
+                }}
                 style={{ width: "100%", padding: "0.5rem" }}
               />
             </div>
-          ))}
+          </div>
         </section>
 
-        {/* Guarantor Section */}
+        {/* ------------------- Guarantor ------------------- */}
         <section>
-          <h2 style={{ fontSize: "1.3rem", marginBottom: "1rem" }}>
-            Guarantor Information
-          </h2>
+          <h2 style={{ fontSize: "1.3rem" }}>Guarantor</h2>
 
-          <div style={{ marginBottom: "1rem" }}>
-            <label style={{ display: "block", fontWeight: "bold" }}>Name</label>
+          <div>
+            <label>Name</label>
             <input
               value={guarantor.name}
               onChange={(e) =>
@@ -200,11 +279,12 @@ export default function ApplicationForm() {
             />
           </div>
 
-          <div style={{ marginBottom: "1rem" }}>
-            <label style={{ display: "block", fontWeight: "bold" }}>
-              FICO Score
-            </label>
+          <div>
+            <label>FICO Score (300–850)</label>
             <input
+              type="number"
+              min="300"
+              max="850"
               value={guarantor.fico_score}
               onChange={(e) =>
                 setGuarantor({ ...guarantor, fico_score: e.target.value })
@@ -214,26 +294,126 @@ export default function ApplicationForm() {
           </div>
         </section>
 
-        {/* Loan Section */}
+        {/* ------------------- Loan ------------------- */}
         <section>
-          <h2 style={{ fontSize: "1.3rem", marginBottom: "1rem" }}>
-            Loan Request
-          </h2>
+          <h2 style={{ fontSize: "1.3rem" }}>Loan Request</h2>
 
-          {Object.entries(loan).map(([key, value]) => (
-            <div key={key} style={{ marginBottom: "1rem" }}>
-              <label style={{ display: "block", fontWeight: "bold" }}>
-                {key.replace(/_/g, " ")}
-              </label>
+          {/* Loan Amount */}
+          <div>
+            <label>Loan Amount (USD)</label>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <span>$&nbsp;</span>
               <input
-                value={value}
+                value={loan.amount}
                 onChange={(e) =>
-                  setLoan({ ...loan, [key]: e.target.value })
+                    setLoan({ ...loan, amount: formatUSD(e.target.value) })
                 }
+                onBlur={() => {
+                    const num = parseUSD(loan.amount);
+                    if (num > 1000000) setLoan({ ...loan, amount: formatUSD(1000000) });
+                    if (num < 1000) setLoan({ ...loan, amount: formatUSD(1000) });
+                }}
                 style={{ width: "100%", padding: "0.5rem" }}
               />
             </div>
-          ))}
+          </div>
+
+          {/* Term */}
+          <div>
+            <label>Term (Months)</label>
+            <select
+              value={loan.term_months}
+              onChange={(e) =>
+                setLoan({ ...loan, term_months: e.target.value })
+              }
+              style={{ width: "100%", padding: "0.5rem" }}
+            >
+              <option value="">Select</option>
+              {[24, 36, 48, 60].map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Equipment type dropdown */}
+          <div>
+            <label>Equipment Type</label>
+            <select
+              value={loan.equipment_type}
+              onChange={(e) =>
+                setLoan({ ...loan, equipment_type: e.target.value })
+              }
+              style={{ width: "100%", padding: "0.5rem" }}
+            >
+              {equipmentTypes.map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Equipment cost (USD) */}
+          <div>
+            <label>Equipment Cost (USD)</label>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <span>$&nbsp;</span>
+              <input
+                value={loan.equipment_cost}
+                onChange={(e) =>
+                    setLoan({ ...loan, equipment_cost: formatUSD(e.target.value) })
+                }
+                onBlur={() => {
+                    const num = parseUSD(loan.equipment_cost);
+                    if (num > 2000000) setLoan({ ...loan, equipment_cost: formatUSD(2000000) });
+                    if (num < 1000) setLoan({ ...loan, equipment_cost: formatUSD(1000) });
+                }}
+                style={{ width: "100%", padding: "0.5rem" }}
+              />
+            </div>
+          </div>
+
+          {/* Equipment year */}
+          <div>
+            <label>Equipment Year</label>
+            <select
+              value={loan.equipment_year}
+              onChange={(e) =>
+                setLoan({ ...loan, equipment_year: e.target.value })
+              }
+              style={{ width: "100%", padding: "0.5rem" }}
+            >
+              {yearsList.map((y) => (
+                <option key={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Vendor */}
+          <div>
+            <label>Vendor</label>
+            <input
+              value={loan.equipment_vendor}
+              onChange={(e) =>
+                setLoan({ ...loan, equipment_vendor: e.target.value })
+              }
+              style={{ width: "100%", padding: "0.5rem" }}
+            />
+          </div>
+
+          {/* Condition */}
+          <div>
+            <label>Condition</label>
+            <select
+              value={loan.equipment_condition}
+              onChange={(e) =>
+                setLoan({ ...loan, equipment_condition: e.target.value })
+              }
+              style={{ width: "100%", padding: "0.5rem" }}
+            >
+              {conditions.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </div>
         </section>
 
         <button
@@ -244,37 +424,21 @@ export default function ApplicationForm() {
             padding: "0.75rem",
             borderRadius: "6px",
             fontSize: "1rem",
-            cursor: "pointer",
           }}
         >
           Submit Application
         </button>
       </form>
 
-      {/* Results */}
       {result && (
-        <div
-          style={{
-            marginTop: "1.5rem",
-            padding: "1rem",
-            background: "#e0ffe0",
-            borderRadius: "6px",
-          }}
-        >
+        <div style={{ marginTop: "1.5rem", padding: "1rem", background: "#e0ffe0" }}>
           <strong>Application Submitted!</strong>
           <pre>{JSON.stringify(result, null, 2)}</pre>
         </div>
       )}
 
       {error && (
-        <div
-          style={{
-            marginTop: "1.5rem",
-            padding: "1rem",
-            background: "#ffe0e0",
-            borderRadius: "6px",
-          }}
-        >
+        <div style={{ marginTop: "1.5rem", padding: "1rem", background: "#ffe0e0" }}>
           <strong>Error:</strong>
           <pre>{JSON.stringify(error, null, 2)}</pre>
         </div>
