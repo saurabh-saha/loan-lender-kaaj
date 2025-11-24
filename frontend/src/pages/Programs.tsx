@@ -29,6 +29,16 @@ interface ProgramForm {
 
 const API = "http://localhost:8000";
 
+// Ensure numbers only
+function onlyNumbers(value: string) {
+  return value.replace(/[^0-9]/g, "");
+}
+
+// Clamp within range
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
 export default function ProgramsPage() {
   const [lenders, setLenders] = useState<Lender[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -40,6 +50,7 @@ export default function ProgramsPage() {
     min_term_months: "",
     max_term_months: ""
   });
+
   const [error, setError] = useState<string | null>(null);
 
   async function loadData() {
@@ -74,7 +85,7 @@ export default function ProgramsPage() {
         min_amount: Number(form.min_amount),
         max_amount: Number(form.max_amount),
         min_term_months: Number(form.min_term_months),
-        max_term_months: Number(form.max_term_months)
+        max_term_months: Number(form.max_term_months),
       };
 
       const res = await axios.post(`${API}/policies/programs`, payload);
@@ -99,7 +110,7 @@ export default function ProgramsPage() {
         Lender Programs
       </h1>
 
-      {/* Create Program */}
+      {/* Form */}
       <form
         onSubmit={handleSubmit}
         style={{
@@ -155,23 +166,45 @@ export default function ProgramsPage() {
           />
         </div>
 
-        {/* Amounts */}
+        {/* Amount inputs */}
         <div style={{ display: "flex", gap: "1rem" }}>
+          {/* Min Amount */}
           <div style={{ flex: 1 }}>
-            <label style={{ display: "block", fontWeight: "bold" }}>Min Loan Amount</label>
+            <label style={{ display: "block", fontWeight: "bold" }}>
+              Min Loan Amount ($)
+            </label>
             <input
               value={form.min_amount}
-              onChange={(e) => setForm({ ...form, min_amount: e.target.value })}
+              onChange={(e) => {
+                const cleaned = onlyNumbers(e.target.value);
+                setForm({ ...form, min_amount: cleaned });
+              }}
+              onBlur={() => {
+                const num = Number(form.min_amount || 0);
+                const safe = clamp(num, 1000, 1000000);
+                setForm({ ...form, min_amount: safe.toString() });
+              }}
               style={{ width: "100%", padding: "0.5rem" }}
               required
             />
           </div>
 
+          {/* Max Amount */}
           <div style={{ flex: 1 }}>
-            <label style={{ display: "block", fontWeight: "bold" }}>Max Loan Amount</label>
+            <label style={{ display: "block", fontWeight: "bold" }}>
+              Max Loan Amount ($)
+            </label>
             <input
               value={form.max_amount}
-              onChange={(e) => setForm({ ...form, max_amount: e.target.value })}
+              onChange={(e) => {
+                const cleaned = onlyNumbers(e.target.value);
+                setForm({ ...form, max_amount: cleaned });
+              }}
+              onBlur={() => {
+                const num = Number(form.max_amount || 0);
+                const safe = clamp(num, 5000, 2000000);
+                setForm({ ...form, max_amount: safe.toString() });
+              }}
               style={{ width: "100%", padding: "0.5rem" }}
               required
             />
@@ -180,27 +213,50 @@ export default function ProgramsPage() {
 
         {/* Terms */}
         <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
+          {/* Min Term */}
           <div style={{ flex: 1 }}>
-            <label style={{ display: "block", fontWeight: "bold" }}>Min Term (months)</label>
+            <label style={{ display: "block", fontWeight: "bold" }}>
+              Min Term (months)
+            </label>
             <input
               value={form.min_term_months}
-              onChange={(e) => setForm({ ...form, min_term_months: e.target.value })}
+              onChange={(e) => {
+                const cleaned = onlyNumbers(e.target.value);
+                setForm({ ...form, min_term_months: cleaned });
+              }}
+              onBlur={() => {
+                const num = Number(form.min_term_months || 0);
+                const safe = clamp(num, 12, 60);
+                setForm({ ...form, min_term_months: safe.toString() });
+              }}
               style={{ width: "100%", padding: "0.5rem" }}
               required
             />
           </div>
 
+          {/* Max Term */}
           <div style={{ flex: 1 }}>
-            <label style={{ display: "block", fontWeight: "bold" }}>Max Term (months)</label>
+            <label style={{ display: "block", fontWeight: "bold" }}>
+              Max Term (months)
+            </label>
             <input
               value={form.max_term_months}
-              onChange={(e) => setForm({ ...form, max_term_months: e.target.value })}
+              onChange={(e) => {
+                const cleaned = onlyNumbers(e.target.value);
+                setForm({ ...form, max_term_months: cleaned });
+              }}
+              onBlur={() => {
+                const num = Number(form.max_term_months || 0);
+                const safe = clamp(num, 24, 120);
+                setForm({ ...form, max_term_months: safe.toString() });
+              }}
               style={{ width: "100%", padding: "0.5rem" }}
               required
             />
           </div>
         </div>
 
+        {/* Submit */}
         <button
           type="submit"
           style={{
@@ -216,7 +272,7 @@ export default function ProgramsPage() {
         </button>
       </form>
 
-      {/* Program List */}
+      {/* Program list */}
       <h2 style={{ fontSize: "1.2rem", marginBottom: "0.75rem" }}>
         Existing Programs
       </h2>
