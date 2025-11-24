@@ -13,16 +13,10 @@ from app.schemas.underwriting import RuleResult, PolicyEvaluation
 
 @dataclass
 class ApplicationProfile:
-    """
-    Derived view of borrower + guarantor + business credit + loan request
-    so the rule engine doesn't care about DB tables.
-    """
     borrower: Dict[str, Any]
     guarantors: List[Dict[str, Any]]
     business_credit: Dict[str, Any] | None
     loan_request: Dict[str, Any]
-
-    # You can precompute useful features:
     derived: Dict[str, Any]
 
 

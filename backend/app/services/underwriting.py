@@ -67,14 +67,13 @@ def build_application_profile(
         "created_at": lr.created_at.isoformat(),
     }
 
-    # Derived features – extend as needed
     current_year = date.today().year
     equipment_age = None
     if lr.equipment_year:
         equipment_age = current_year - lr.equipment_year
 
     primary_fico = g_dicts[0]["fico_score"] if g_dicts and g_dicts[0]["fico_score"] else None
-    foir = None  # You can compute if you have EMI/income details
+    foir = None
 
     derived = {
         "equipment_age": equipment_age,
