@@ -24,11 +24,15 @@ interface BorrowerForm {
   state: string;
   years_in_business: string;
   annual_revenue: string;
+  medical_license_flag: boolean;
+  paynet_score: string;
 }
 
 interface GuarantorForm {
   name: string;
   fico_score: string;
+  homeowner_flag: boolean;
+  bankruptcy_flag: boolean;
 }
 
 interface LoanForm {
@@ -42,12 +46,35 @@ interface LoanForm {
 }
 
 export default function ApplicationForm() {
-  const industries = ["Construction", "Manufacturing", "Retail", "Transport", "Healthcare"];
-  const states = ["CA", "NY", "TX", "FL", "WA"];
-  const equipmentTypes = ["Excavator", "Forklift", "Truck", "Bulldozer", "Crane"];
-  const conditions = ["New", "Used"];
+  const states = ["NY", "TX", "FL", "WA", "GA", "CA"];
 
-  const yearsList = Array.from({ length: 17 }, (_, i) => 2010 + i);
+  const industries = [
+    "Construction",
+    "Manufacturing",
+    "Trucking",
+    "Logging",
+    "Commercial Services",
+    "Industrial Machinery",
+    "Woodworking",
+    "General Business"
+  ];
+  
+  const equipmentTypes = [
+    "Class 8 Truck",
+    "Trailer",
+    "Reefer Trailer",
+    "Machine Tool",
+    "Woodworking Machine",
+    "Industrial Equipment",
+    "Commercial Vehicle",
+    "General Equipment"
+  ];
+  
+  const conditions = ["New", "Used"];
+  
+  const yearsList = Array.from({ length: 15 }, (_, i) => 2025 - i); // respects equipment age checks
+  
+  
 
   const API = "http://localhost:8000";
 
@@ -57,11 +84,15 @@ export default function ApplicationForm() {
     state: states[0],
     years_in_business: "",
     annual_revenue: "",
+    medical_license_flag: false,
+    paynet_score: "",
   });
 
   const [guarantor, setGuarantor] = useState<GuarantorForm>({
     name: "",
     fico_score: "",
+    homeowner_flag: false,  
+    bankruptcy_flag: false,
   });
 
   const [loan, setLoan] = useState<LoanForm>({
@@ -87,11 +118,15 @@ export default function ApplicationForm() {
       state: states[Math.floor(Math.random() * states.length)],
       years_in_business: (Math.random() * 10 + 1).toFixed(1),
       annual_revenue: formatUSD(Math.floor(Math.random() * 900000 + 100000)),
+      medical_license_flag: Math.random() > 0.5,
+      paynet_score: (Math.random() * 300 + 500).toFixed(0),
     });
 
     setGuarantor({
       name: "John Doe " + Math.floor(Math.random() * 100),
       fico_score: (Math.random() * 200 + 600).toFixed(0),
+      homeowner_flag: Math.random() > 0.5,
+      bankruptcy_flag: Math.random() > 0.85, 
     });
 
     setLoan({
@@ -119,11 +154,15 @@ export default function ApplicationForm() {
           ...borrower,
           years_in_business: Number(borrower.years_in_business),
           annual_revenue: parseUSD(borrower.annual_revenue),
+          medical_license_flag: borrower.medical_license_flag,
+          paynet_score: Number(borrower.paynet_score),
         },
         guarantors: [
           {
             ...guarantor,
             fico_score: Number(guarantor.fico_score),
+            homeowner_flag: guarantor.homeowner_flag,
+            bankruptcy_flag: Boolean(guarantor.bankruptcy_flag),
           },
         ],
         loan_request: {
@@ -262,6 +301,35 @@ export default function ApplicationForm() {
               />
             </div>
           </div>
+
+          <div style={{ marginTop: "0.5rem" }}>
+            <label style={{ fontWeight: "bold" }}>
+              Medical License (for medical equipment?)
+            </label>
+            <input
+              type="checkbox"
+              checked={borrower.medical_license_flag}
+              onChange={(e) =>
+                setBorrower({ ...borrower, medical_license_flag: e.target.checked })
+              }
+              style={{ marginLeft: "0.5rem" }}
+            />
+          </div>
+
+          <div>
+            <label>PayNet Score (0–900)</label>
+            <input
+              type="number"
+              min="0"
+              max="900"
+              value={borrower.paynet_score}
+              onChange={(e) =>
+                setBorrower({ ...borrower, paynet_score: e.target.value })
+              }
+              style={{ width: "100%", padding: "0.5rem" }}
+            />
+          </div>
+
         </section>
 
         {/* ------------------- Guarantor ------------------- */}
@@ -292,6 +360,34 @@ export default function ApplicationForm() {
               style={{ width: "100%", padding: "0.5rem" }}
             />
           </div>
+
+          <div style={{ marginTop: "0.5rem" }}>
+            <label style={{ fontWeight: "bold" }}>Homeowner?</label>
+            <input
+              type="checkbox"
+              checked={guarantor.homeowner_flag}
+              onChange={(e) =>
+                setGuarantor({ ...guarantor, homeowner_flag: e.target.checked })
+              }
+              style={{ marginLeft: "0.5rem" }}
+            />
+          </div>
+
+          {/* Bankruptcy Flag */}
+          <div style={{ marginTop: "0.5rem" }}>
+            <label>
+              <input
+                type="checkbox"
+                checked={guarantor.bankruptcy_flag}
+                onChange={(e) =>
+                  setGuarantor({ ...guarantor, bankruptcy_flag: e.target.checked })
+                }
+              />
+              &nbsp; Bankruptcy in last 7 years
+            </label>
+          </div>
+
+
         </section>
 
         {/* ------------------- Loan ------------------- */}

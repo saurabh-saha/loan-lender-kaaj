@@ -1,5 +1,5 @@
 # app/models/borrower.py
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Boolean, Column, Integer, String, Float
 from app.db import Base
 
 class Borrower(Base):
@@ -11,3 +11,5 @@ class Borrower(Base):
     state = Column(String, nullable=False)
     years_in_business = Column(Float, nullable=False)
     annual_revenue = Column(Float, nullable=False)
+    paynet_score = Column(Integer, nullable=True)
+    medical_license_flag = Column(Boolean, default=False)

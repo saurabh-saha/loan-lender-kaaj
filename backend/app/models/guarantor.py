@@ -12,5 +12,7 @@ class Guarantor(Base):
     fico_score = Column(Integer, nullable=True)
     bankruptcy_flag = Column(Boolean, default=False)
     delinquency_flag = Column(Boolean, default=False)
+    bankruptcy_flag = Column(Boolean, default=False)
+    homeowner_flag = Column(Boolean, default=False)
 
     borrower = relationship("Borrower", backref="guarantors")

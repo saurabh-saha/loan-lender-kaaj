@@ -137,6 +137,17 @@ export default function PolicyBuilder() {
 
   async function submitPolicy(e: FormEvent) {
     e.preventDefault();
+    setError("");
+    if (!selectedLender) {
+      setError("Please select a lender.");
+      return;
+    }
+  
+    if (!selectedProgram) {
+      setError("Please select a program.");
+      return;
+    }
+
     try {
       await axios.post(`${API}/policies/`, policyPayload);
       alert("Policy created!");
@@ -150,6 +161,22 @@ export default function PolicyBuilder() {
       <h1 style={{ fontSize: "1.8rem", fontWeight: "bold", marginBottom: "1.5rem" }}>
         Policy Builder
       </h1>
+
+      {error && (
+        <div
+          style={{
+            marginTop: "1rem",
+            marginBottom: "1rem",
+            background: "#fee2e2",
+            padding: "0.75rem",
+            borderRadius: "6px",
+            color: "#b91c1c"
+          }}
+        >
+          {error}
+        </div>
+      )}
+
 
       {/* LENDER SELECTOR */}
       <div>
@@ -354,18 +381,20 @@ export default function PolicyBuilder() {
       {/* SUBMIT */}
       <button
         onClick={submitPolicy}
+        disabled={!selectedLender || !selectedProgram}
         style={{
           marginTop: "2rem",
-          background: "#16a34a",
+          background: !selectedLender || !selectedProgram ? "#9ca3af" : "#16a34a",
           color: "white",
           padding: "0.8rem 1.5rem",
           borderRadius: "6px",
-          cursor: "pointer",
+          cursor: !selectedLender || !selectedProgram ? "not-allowed" : "pointer",
           fontSize: "1rem"
         }}
       >
         Create Policy
       </button>
+
     </div>
   );
 }
